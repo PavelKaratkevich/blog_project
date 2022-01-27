@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"time"
+	// "time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
