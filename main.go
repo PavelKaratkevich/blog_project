@@ -12,15 +12,39 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type Person struct {
+	Id   int
+	Name string
+	Age  string
+}
+
+var Pasha Person
+
 func main() {
 	log.Println("My SQL in docker running")
 
-	_, err := ConnectDB()
+	client, err := ConnectDB()
 	if err != nil {
 		log.Fatalf("Error with DB Connection: %v", err.Error())
 	}
+
+	get, err := client.Query("Select Id, Name, Age from blog_project")
+	if err != nil {
+		log.Fatalf("Error while inseting data into database: %v", err.Error())
+	}
+
+	for get.Next() {
+		var user Person
+		err = get.Scan(&user.Id, &user.Name, &user.Age)
+
+		if err != nil {
+			log.Fatalf("Error while getting data into database: %v", err.Error())
+		}
+		log.Printf("User name is %v, id - %v, age - %v", user.Id, user.Name, user.Age)
+	} 
+	// get.Close()
 }
- 
+
 func ConnectDB() (*sqlx.DB, error) {
 	// load environment variables
 	err := godotenv.Load(".env")
@@ -36,12 +60,6 @@ func ConnectDB() (*sqlx.DB, error) {
 	db_port := os.Getenv("DB_PORT")
 	db_name := os.Getenv("POSTGRES_DB")
 
-		log.Printf("User: %v", db_user)
-		log.Printf("Password: %v", db_pswd)
-		log.Printf("Host: %v", db_address)
-		log.Printf("Port: %v", db_port)
-		log.Printf("DB: %v", db_name)
-
 	dataSource := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", db_address, db_port, db_user, db_name, db_pswd)
 
 	client, err := sqlx.Open("postgres", dataSource)
@@ -54,7 +72,7 @@ func ConnectDB() (*sqlx.DB, error) {
 	if err != nil {
 		log.Fatalf("Error while connection ping: %s", err.Error())
 		return nil, err
-	}
+	} 
 
 	// Reading file with SQL instructions
 	res, err := ioutil.ReadFile("instructions.sql")
@@ -64,9 +82,6 @@ func ConnectDB() (*sqlx.DB, error) {
 	}
 	var schema = string(res)
 	client.MustExec(schema)
-
-	client.SetConnMaxLifetime(time.Minute * 3)
-	client.SetMaxOpenConns(10)
-	client.SetMaxIdleConns(10)
+	
 	return client, nil
 }
