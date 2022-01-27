@@ -8,8 +8,6 @@ import (
 	"os"
 	"text/template"
 
-	// "time"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -32,12 +30,21 @@ func create(w http.ResponseWriter, r *http.Request) {
 }
 
 func save_article(w http.ResponseWriter, r *http.Request) {
-	// title := r.FormValue("title")
-	// anons := r.FormValue("anons")
-	// full_text := r.FormValue("full_text")
+	title := r.FormValue("title")
+	anons := r.FormValue("anons")
+	full_text := r.FormValue("full_text")
 
+	client, err := ConnectDB()
+	if err != nil {
+		log.Fatalf("Failed to connect to the database: %v", err.Error())
+	}
+	defer client.Close()
 
-	
+	insert, err := client.Query("Insert into articles (title, anons, full_text) values ($1, $2, $3)", title, anons, full_text)
+	if err != nil {
+		log.Printf("Error while inserting data into database: %v", err.Error())
+	}
+	defer insert.Close()
 }
 
 func HandleFunc() {
@@ -50,4 +57,45 @@ func HandleFunc() {
 
 func main() {
 	HandleFunc()
+}
+
+func ConnectDB() (*sqlx.DB, error) {
+    // load environment variables
+    err := godotenv.Load(".env")
+    if err != nil {
+        log.Fatalf("Error loading .env file")
+        return nil, err
+    }
+
+    // get environment variables
+    db_user := os.Getenv("POSTGRES_USER")
+    db_pswd := os.Getenv("POSTGRES_PASSWORD")
+    db_address := os.Getenv("DB_ADDRESS")
+    db_port := os.Getenv("DB_PORT")
+    db_name := os.Getenv("POSTGRES_DB")
+
+    dataSource := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", db_address, db_port, db_user, db_name, db_pswd)
+
+    client, err := sqlx.Open("postgres", dataSource)
+    if err != nil || client == nil {
+        log.Fatal("Error while opening DB: ", err.Error())
+        return nil, err
+    }
+
+    err = client.Ping()
+    if err != nil {
+        log.Fatalf("Error while connection ping: %s", err.Error())
+        return nil, err
+    } 
+
+    // Reading file with SQL instructions
+    res, err := ioutil.ReadFile("instructions.sql")
+    if err != nil {
+        log.Fatalf("Error while reading file with instructions: %v", err.Error())
+        return nil, err
+    }
+    var schema = string(res)
+    client.MustExec(schema)
+    
+    return client, nil
 }
