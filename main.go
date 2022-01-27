@@ -26,7 +26,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 	}
-	t.ExecuteTemplate(w, "index", nil)
+	t.ExecuteTemplate(w, "create", nil)
 }
 
 func save_article(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +45,9 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error while inserting data into database: %v", err.Error())
 	}
 	defer insert.Close()
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+
 }
 
 func HandleFunc() {
@@ -60,42 +63,43 @@ func main() {
 }
 
 func ConnectDB() (*sqlx.DB, error) {
-    // load environment variables
-    err := godotenv.Load(".env")
-    if err != nil {
-        log.Fatalf("Error loading .env file")
-        return nil, err
-    }
+	// load environment variables
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+		return nil, err
+	}
 
-    // get environment variables
-    db_user := os.Getenv("POSTGRES_USER")
-    db_pswd := os.Getenv("POSTGRES_PASSWORD")
-    db_address := os.Getenv("DB_ADDRESS")
-    db_port := os.Getenv("DB_PORT")
-    db_name := os.Getenv("POSTGRES_DB")
+	// get environment variables
+	db_user := os.Getenv("POSTGRES_USER")
+	db_pswd := os.Getenv("POSTGRES_PASSWORD")
+	db_address := os.Getenv("DB_ADDRESS")
+	db_port := os.Getenv("DB_PORT")
+	db_name := os.Getenv("POSTGRES_DB")
 
-    dataSource := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", db_address, db_port, db_user, db_name, db_pswd)
+	dataSource := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", db_address, db_port, db_user, db_name, db_pswd)
 
-    client, err := sqlx.Open("postgres", dataSource)
-    if err != nil || client == nil {
-        log.Fatal("Error while opening DB: ", err.Error())
-        return nil, err
-    }
+	client, err := sqlx.Open("postgres", dataSource)
+	if err != nil || client == nil {
+		log.Fatal("Error while opening DB: ", err.Error())
+		return nil, err
+	}
 
-    err = client.Ping()
-    if err != nil {
-        log.Fatalf("Error while connection ping: %s", err.Error())
-        return nil, err
-    } 
+	err = client.Ping()
+	if err != nil {
+		log.Fatalf("Error while connection ping: %s", err.Error())
+		return nil, err
+	}
+	log.Println("Database is running")
 
-    // Reading file with SQL instructions
-    res, err := ioutil.ReadFile("instructions.sql")
-    if err != nil {
-        log.Fatalf("Error while reading file with instructions: %v", err.Error())
-        return nil, err
-    }
-    var schema = string(res)
-    client.MustExec(schema)
-    
-    return client, nil
+	// Reading file with SQL instructions
+	res, err := ioutil.ReadFile("instructions.sql")
+	if err != nil {
+		log.Fatalf("Error while reading file with instructions: %v", err.Error())
+		return nil, err
+	}
+	var schema = string(res)
+	client.MustExec(schema)
+
+	return client, nil
 }
