@@ -36,7 +36,7 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 
 	client, err := ConnectDB()
 	if err != nil {
-		log.Fatalf("Failed to connect to the database: %v", err.Error())
+		log.Printf("Failed to connect to the database: %v", err.Error())
 	}
 	defer client.Close()
 
@@ -67,7 +67,7 @@ func ConnectDB() (*sqlx.DB, error) {
 	// load environment variables
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Printf("Error loading .env file")
 		return nil, err
 	}
 
@@ -82,13 +82,13 @@ func ConnectDB() (*sqlx.DB, error) {
 
 	client, err := sqlx.Open("postgres", dataSource)
 	if err != nil || client == nil {
-		log.Fatal("Error while opening DB: ", err.Error())
+		log.Printf("Error while opening DB: ", err.Error())
 		return nil, err
 	}
 
 	err = client.Ping()
 	if err != nil {
-		log.Fatalf("Error while connection ping: %s", err.Error())
+		log.Printf("Error while connection ping: %s", err.Error())
 		return nil, err
 	}
 	log.Println("Database is running")
@@ -96,7 +96,7 @@ func ConnectDB() (*sqlx.DB, error) {
 	// Reading file with SQL instructions
 	res, err := ioutil.ReadFile("instructions.sql")
 	if err != nil {
-		log.Fatalf("Error while reading file with instructions: %v", err.Error())
+		log.Printf("Error while reading file with instructions: %v", err.Error())
 		return nil, err
 	}
 	var schema = string(res)

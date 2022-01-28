@@ -19,6 +19,7 @@ WORKDIR /app
 RUN adduser -S nonrootuser
 
 COPY --from=builder /app/app .
+COPY --from=builder /app .
 COPY --from=builder /app/.env .
 COPY --from=builder /app/instructions.sql .
 
