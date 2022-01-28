@@ -63,6 +63,7 @@ func main() {
 }
 
 func ConnectDB() (*sqlx.DB, error) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// load environment variables
 	err := godotenv.Load(".env")
 	if err != nil {
