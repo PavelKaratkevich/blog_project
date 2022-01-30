@@ -8,17 +8,49 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
+
+type Article struct {
+	Id int
+	Title, Anons, FullText string
+}
+
+var posts []Article
+var showPost Article
 
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/index.html", "templates/header.html", "templates/footer.html")
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 	}
-	t.ExecuteTemplate(w, "index", nil)
+
+	client, err := ConnectDB()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %v", err.Error())
+	}
+	defer client.Close()
+
+	res, err := client.Query("SELECT * FROM articles")
+	if err != nil {
+		log.Printf("Error whle selecting all articles: %v", err.Error())
+	}
+
+	posts = []Article{}
+	for res.Next() {
+		var article Article
+		err := res.Scan(&article.Id, &article.Title, &article.Anons, &article.FullText)
+		if err != nil {
+			log.Printf("Error whle scanning all articles: %v", err.Error())
+		}
+		posts = append(posts, article)
+		// fmt.Println(fmt.Sprintf("Article: %v with id %v", article.Title, article.Id))
+	}
+
+	t.ExecuteTemplate(w, "index", posts)
 }
 
 func create(w http.ResponseWriter, r *http.Request) {
@@ -30,9 +62,14 @@ func create(w http.ResponseWriter, r *http.Request) {
 }
 
 func save_article(w http.ResponseWriter, r *http.Request) {
+	var client *sqlx.DB
 	title := r.FormValue("title")
 	anons := r.FormValue("anons")
 	full_text := r.FormValue("full_text")
+
+	if title == "" || anons == "" || full_text == "" {
+		fmt.Fprintf(w, "Не все данные заполнены")
+	}
 
 	client, err := ConnectDB()
 	if err != nil {
@@ -47,14 +84,51 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	defer insert.Close()
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
 
+func show_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	t, err := template.ParseFiles("templates/show.html", "templates/header.html", "templates/footer.html")
+	if err != nil {
+		log.Printf("Error while parsing HTML files: %v", err.Error())
+	}
+	
+	client, err := ConnectDB()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %v", err.Error())
+	}
+	defer client.Close()
+
+	res, err := client.Query("SELECT * FROM articles WHERE id = $1", vars["id"])
+	if err != nil {
+		log.Printf("Error whle selecting all articles: %v", err.Error())
+	}
+
+	showPost = Article{}
+	for res.Next() {
+		var article Article
+		err := res.Scan(&article.Id, &article.Title, &article.Anons, &article.FullText)
+		if err != nil {
+			log.Printf("Error while scanning all articles: %v", err.Error())
+		}
+		showPost = article
+	}
+
+	t.ExecuteTemplate(w, "show", showPost)
 }
 
 func HandleFunc() {
+
+	rtr := mux.NewRouter()
+
+	rtr.HandleFunc("/", index).Methods("GET")
+	rtr.HandleFunc("/create", create).Methods("GET")
+	rtr.HandleFunc("/save_article", save_article).Methods("POST")
+	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET")
+
+	http.Handle("/", rtr)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
-	http.HandleFunc("/", index)
-	http.HandleFunc("/create", create)
-	http.HandleFunc("/save_article", save_article)
 	http.ListenAndServe(":8080", nil)
 }
 
