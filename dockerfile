@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o app ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o app ./cmd/myapp/main.go
 
 FROM alpine
 WORKDIR /app
@@ -19,9 +19,9 @@ WORKDIR /app
 RUN adduser -S nonrootuser
 
 COPY --from=builder /app/app .
-COPY --from=builder /app .
+COPY --from=builder /app/ .
 COPY --from=builder /app/.env .
-COPY --from=builder /app/instructions.sql .
+COPY --from=builder /app/internal/article/repository/postgresDB/instructions.sql .
 
 USER nonrootuser
 
