@@ -110,3 +110,21 @@ func Show_post(w http.ResponseWriter, r *http.Request) {
 
 	t.ExecuteTemplate(w, "show", showPost)
 }
+
+func Delete_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	client, err := postgresRepository.ConnectDB()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %v", err.Error())
+	}
+	
+
+	delete, err := client.Query("DELETE FROM articles WHERE id = $1", vars["id"])
+	if err != nil {
+		log.Printf("Error whle deleting article: %v", err.Error())
+	}
+
+	defer delete.Close()
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}

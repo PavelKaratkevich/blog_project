@@ -14,6 +14,7 @@ func StartApp() {
 	rtr.HandleFunc("/create", handlers.Create).Methods("GET")
 	rtr.HandleFunc("/save_article", handlers.Save_article).Methods("POST")
 	rtr.HandleFunc("/post/{id:[0-9]+}", handlers.Show_post).Methods("GET")
+	rtr.HandleFunc("/delete/{id:[0-9]+}", handlers.Delete_post).Methods("POST") // https://medium.com/@carlospineda/why-no-methods-for-put-delete-in-html-f483b66d8874
 
 	http.Handle("/", rtr)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
